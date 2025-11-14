@@ -141,7 +141,7 @@ with st.sidebar:
 
     departamentos_caribe = [
         "Atlántico", "Bolívar", "Córdoba", "Sucre",
-        "Magdalena", "La Guajira", "Cesar", "San Andrés y Providencia"
+        "Magdalena", "La Guajira", "Cesar", "San Andrés "
     ]
 
     departamento = st.radio(
@@ -173,6 +173,7 @@ if departamento:
         # ===============================
         st.markdown("### 🔹 Indicadores Generales")
         c1, c2, c3 = st.columns(3)
+        
         with c1:
             st.markdown(f"""
             <div class="card">
@@ -220,9 +221,9 @@ if departamento:
                 margin=dict(l=0, r=0, t=40, b=0),
                 coloraxis_colorbar=dict(title=dict(text="Sitios", side="right")),
             )
-            st.plotly_chart(fig_map, use_container_width=True)
+            st.plotly_chart(fig_map, width="stretch")
 
-        # --- Top Categorías (sin modificar)
+        # --- Top Categorías 
         with col2:
             if "categoria" in df_sities.columns:
                 df_top = (
@@ -299,7 +300,7 @@ if departamento:
                     margin=dict(l=20, r=20, t=50, b=80),
                     plot_bgcolor="white"
                 )
-                st.plotly_chart(fig_demand, use_container_width=True)
+                st.plotly_chart(fig_demand, width="stretch")
 
         # --- Promedio Puntuación
         with col4:
@@ -341,7 +342,7 @@ if departamento:
                         )
 
                         fig_puntuacion.update_yaxes(showticklabels=True)
-                        st.plotly_chart(fig_puntuacion, use_container_width=True)
+                        st.plotly_chart(fig_puntuacion, width="stretch")
 
                     else:
                         st.info("No se encontraron sitios en Google Maps para este departamento.")
