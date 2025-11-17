@@ -255,6 +255,34 @@ async def get_google_sities_full(departamento: str = Query(..., min_length=2)):
     except Exception as e:
         raise HTTPException(500, detail=str(e))
 
+# Reseñas  
+@app.get("/foursquare/reseñantes_full")
+async def get_foursquare_reviewers_full(departamento: str = Query(..., min_length=2)):
+    """
+    Devuelve TODOS los campos de la colección reviewers de Foursquare.
+    Filtrado por departamento.
+    """
+    try:
+        filtro = {"departamento": {"$regex": departamento, "$options": "i"}}
+
+        # Traer todos los campos excepto el _id
+        cursor = db_foursquare.reviewers.find(filtro, {"_id": 0})
+        reseñantes = await cursor.to_list(length=None)
+
+        if not reseñantes:
+            raise HTTPException(404, f"No se encontraron reseñantes en {departamento}")
+
+        return {
+            "fuente": "Foursquare",
+            "departamento": departamento,
+            "total": len(reseñantes),
+            "reseñantes": reseñantes
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 
 
 # ==========================================
