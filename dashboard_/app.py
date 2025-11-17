@@ -4,9 +4,8 @@ import pandas as pd
 import plotly.express as px
 import matplotlib.pyplot as plt
 from wordcloud import WordCloud, STOPWORDS
-
-
-
+from exporter import obtener_datos_completos, crear_excel
+import asyncio
 
 # ===============================
 # CONFIGURACIÓN DE LA PÁGINA
@@ -65,6 +64,50 @@ hr {
     height: 1px;
     background-color: #ddd;
     margin: 25px 0;
+}
+
+/* Separador */
+hr {
+    border: none;
+    height: 1px;
+    background-color: #ddd;
+    margin: 25px 0;
+}
+
+/* ========================= */
+/* BOTONES PERSONALIZADOS   */
+/* ========================= */
+
+/* Botón normal (Generar Excel) */
+div.stButton > button {
+    background-color: #1E88E5 !important;
+    color: white !important;
+    border-radius: 8px !important;
+    padding: 0.6rem 1rem !important;
+    border: none !important;
+    font-weight: 600 !important;
+    width: 100% !important;
+}
+
+/* Hover */
+div.stButton > button:hover {
+    background-color: #1565C0 !important;
+}
+
+/* Botón de descarga */
+.stDownloadButton > button {
+    background-color: #43A047 !important;
+    color: white !important;
+    border-radius: 8px !important;
+    padding: 0.6rem 1rem !important;
+    border: none !important;
+    font-weight: 600 !important;
+    width: 100% !important;
+}
+
+/* Hover */
+.stDownloadButton > button:hover {
+    background-color: #2E7D32 !important;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -129,6 +172,33 @@ with st.sidebar:
         options=departamentos_caribe,
         index=None
     )
+
+# ===============================
+# DESCARGA DE EXCEL COMPLETO
+# ===============================
+if departamento:
+    st.sidebar.markdown("---")
+    st.sidebar.subheader(" Exportar datos completos")
+
+    # Botón que genera el archivo Excel
+    if st.sidebar.button("Generar archivo Excel"):
+        with st.spinner("Generando archivo Excel..."):
+
+            # Llamar los 4 endpoints completos
+            dataframes = asyncio.run(obtener_datos_completos(departamento))
+
+            # Crear el archivo Excel con varias hojas
+            excel_file = crear_excel(dataframes)
+
+        st.sidebar.success("Archivo Excel listo para descargar ✔️")
+
+        # Botón de descarga
+        st.sidebar.download_button(
+            label="⬇ Descargar Archivo",
+            data=excel_file,
+            file_name=f"Datos_Completos_{departamento}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
 
 # ===============================
 # CUERPO PRINCIPAL
@@ -360,7 +430,7 @@ if departamento:
             texto_tips = " ".join(df_tips["comment"]).replace('"', "")
             stopwords_es = STOPWORDS.union({
                 "el", "la", "los", "las", "un", "una", "unos", "unas", "yo",
-                "que", "de", "del", "al", "y", "o", "a", "en", "es"
+                "que", "de", "del", "al", "y", "o", "a", "en", "es", "Con", "con"
             })
 
             col_wc, col_time = st.columns([1, 1])
