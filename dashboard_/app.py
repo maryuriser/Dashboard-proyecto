@@ -6,6 +6,10 @@ import matplotlib.pyplot as plt
 from wordcloud import WordCloud, STOPWORDS
 from exporter import obtener_datos_completos, crear_excel
 import asyncio
+import streamlit.components.v1 as components
+import calendar
+import plotly.graph_objects as go
+import numpy as np
 
 # ===============================
 # CONFIGURACIÓN DE LA PÁGINA
@@ -34,6 +38,7 @@ st.markdown("""
 /* Tarjetas */
 div[data-testid="stMetricValue"] { color: #2c3e50; }
 div[data-testid="stMetricLabel"] { color: #7f8c8d; }
+            
 /* Encabezados */
 h1, h2, h3 {
     color: #2c3e50;
@@ -57,7 +62,18 @@ h1, h2, h3 {
 }
 .card:hover { transform: translateY(-3px); }
 .card h4 { color: #7f8c8d; margin-bottom: 5px; }
-.card p { font-size: 22px; font-weight: 600; color: #2c3e50; }
+.card p {
+    font-size: 42px !important;
+    font-weight: 800 !important;
+    color: #2c3e50 !important;
+    margin-top: 15px;
+    line-height: 1.1;
+}
+.card h4 {
+    font-size: 20px !important;
+    font-weight: 700 !important;
+    color: #6b6b6b !important;
+}
 /* Separador */
 hr {
     border: none;
@@ -214,7 +230,7 @@ if departamento:
     else:
 
         # TARJETAS PRINCIPALES
-        st.markdown("### 🔹 Indicadores Generales")
+        st.markdown("###  Indicadores Generales")
 
         c1, c2, c3 = st.columns(3)
 
@@ -283,8 +299,9 @@ if departamento:
 
         # ------------ CATEGORÍAS ------------
         with col2:
+        # título
             st.markdown("""
-                <h5 style="text-align:center; color:#333; margin-bottom:15px; font-weight:600;">
+                <h5 style="text-align:center; color:#333; margin-bottom:12px; font-weight:600;">
                     Categorías de Sitios
                 </h5>
             """, unsafe_allow_html=True)
@@ -298,6 +315,7 @@ if departamento:
                 "Other": "Otros",
                 "Viewpoints": "Miradores"
             }
+
             df_sities["categoria"] = df_sities["categoria"].replace(trad)
 
             df_top = (
@@ -307,30 +325,72 @@ if departamento:
                 .sort_values("cantidad", ascending=False)
             )
 
-            colors = [
-                "#00B3A4", "#F39C12", "#E74C3C", "#9B59B6", "#3498DB",
-                "#1ABC9C", "#2ECC71", "#E67E22", "#16A085", "#7F8C8D"
-            ]
+            # Si no hay datos, mostrar mensaje
+            if df_top.empty:
+                st.info("No hay categorías para mostrar.")
+            else:
 
-            max_val = df_top["cantidad"].max()
-            for i, row in enumerate(df_top.itertuples(), start=0):
-                st.markdown(f"""
-                <div style="display:flex; align-items:center; margin-bottom:6px;">
-                    <div style="flex:1; font-size:13px;">{row.categoria}</div>
-                    <div style="flex:3; height:14px; background:#f2f2f2; border-radius:6px;">
-                        <div style="width:{(row.cantidad/max_val)*100}%; height:100%; background:{colors[i%len(colors)]}; border-radius:6px;"></div>
+                # ===== COLORES SEGÚN POSICIÓN (mayor = rojo) =====
+                escala_ordenada = [
+                    "#FF0000",  # Rojo
+                    "#FF6600",  # Naranja
+                    "#FFCC00",  # Amarillo
+                    "#66CC00",  # Verde
+                    "#0099FF",  # Azul
+                    "#6633CC",  # Morado
+                    "#999999"   # Gris
+                ]
+
+                df_top["color"] = [
+                    escala_ordenada[i % len(escala_ordenada)]
+                    for i in range(len(df_top))
+                ]
+
+                max_val = int(df_top["cantidad"].max())
+
+                # Construcción del HTML
+                rows_html = ""
+                for row in df_top.itertuples():
+                    pct = (row.cantidad / max_val) * 100 if max_val > 0 else 0
+
+                    rows_html += f"""
+                    <div style="margin-bottom:14px;">
+                        <div style="font-size:13px; font-weight:600; color:#444; margin-bottom:6px;">
+                            {row.categoria}
+                        </div>
+                        <div style="display:flex; align-items:center;">
+                            <div style="flex:1; height:16px; background:#f2f2f2; border-radius:8px; margin-right:10px; overflow:hidden;">
+                                <div style="width:{pct}%; height:100%; background:{row.color}; border-radius:8px;"></div>
+                            </div>
+                            <div style="width:44px; text-align:right; font-size:13px; font-weight:600; color:#333;">
+                                {row.cantidad}
+                            </div>
+                        </div>
                     </div>
-                    <div style="width:40px; text-align:right; font-size:13px;">{row.cantidad}</div>
+                    """
+
+                card_html = f"""
+                <div style="
+                    background:white;
+                    padding:14px;
+                    border-radius:12px;
+                    box-shadow:0 2px 6px rgba(0,0,0,0.08);
+                    font-family: Roboto, Arial, sans-serif;
+                ">
+                    {rows_html}
                 </div>
-                """, unsafe_allow_html=True)
+                """
+
+                height = min(600, 60 + len(df_top) * 62)
+                components.html(card_html, height=height, scrolling=False)
+
+# -----------------------------------------------------------------
 
         # ===============================
         # DEMANDA + PUNTUACIÓN
         # ===============================
         st.markdown("---")
-        st.markdown(f"###  Demanda Turística y Puntuación Promedio - {departamento}")
-
-        col3, col4 = st.columns(2)
+        st.markdown(f"###  Distribución de visitantes y Calificaciones - {departamento}")
 
         col3, col4 = st.columns(2)
 
@@ -353,6 +413,12 @@ if departamento:
                 )
 
                 fig_demand.update_traces(textposition="outside", textfont_size=12)
+
+                # -----------------------------
+                # 🔥 AQUÍ SE AGREGA LO IMPORTANTE
+                fig_demand.update_yaxes(type="log")
+                # -----------------------------
+
                 fig_demand.update_layout(
                     xaxis_title="",
                     yaxis_title="Número de Reseñantes",
@@ -362,14 +428,13 @@ if departamento:
                     margin=dict(l=20, r=20, t=50, b=80),
                     plot_bgcolor="white"
                 )
-                st.plotly_chart(fig_demand, width="stretch")
+                st.plotly_chart(fig_demand, use_container_width=True)
 
 
         # ------------ PROMEDIO DE PUNTUACIÓN ------------
         with col4:
             try:
                 data_google = obtener_google_sities_puntuacion(departamento)
-
                 df_google = pd.DataFrame(data_google)
 
                 if not df_google.empty:
@@ -381,6 +446,14 @@ if departamento:
                         .reset_index()
                     )
 
+                    # Ordenar de menor a mayor (para barras horizontales)
+                    df_promedio = df_promedio.sort_values("puntuacion", ascending=True)
+
+                    # Categorías únicas
+                    categorias = df_promedio["categoria"].unique().tolist()
+                    paleta_set2 = px.colors.qualitative.Set2[:len(categorias)]
+                    color_map = {cat: col for cat, col in zip(categorias, paleta_set2)}
+
                     # --- GRÁFICO ---
                     fig_puntuacion = px.bar(
                         df_promedio,
@@ -389,24 +462,43 @@ if departamento:
                         color="categoria",
                         orientation="h",
                         barmode="stack",
-                        text_auto=".2f",
-                        color_discrete_sequence=px.colors.qualitative.Set2
+                        text=None,
+                        height=450,
+                        color_discrete_map=color_map
                     )
 
+                    # ✔ OCULTAR TODAS LAS CATEGORÍAS MENOS LA PRIMERA
+                    primera_categoria = categorias[0]
+
+                    for trace in fig_puntuacion.data:
+                        if trace.name != primera_categoria:
+                            trace.visible = "legendonly"
+
                     fig_puntuacion.update_layout(
+                        title=dict(
+                            text=" Promedio de puntuación por municipio",
+                            x=0.03,
+                            y=0.98,
+                            font=dict(size=18, color="#2c3e50")
+                        ),
                         xaxis_title="Promedio de Puntuación",
                         yaxis_title=None,
                         legend_title="Categoría",
                         plot_bgcolor="white",
                         paper_bgcolor="white",
-                        bargap=0.2,
-                        margin=dict(l=40, r=40, t=20, b=60),
-                        xaxis=dict(showgrid=True, zeroline=False),
+                        bargap=0.55,       
+                        bargroupgap=0.35,   
+                        margin=dict(l=40, r=40, t=70, b=40),
+                        xaxis=dict(showgrid=True, gridcolor="rgba(200,200,200,0.3)"),
                         yaxis=dict(showgrid=False),
                     )
 
-                    fig_puntuacion.update_yaxes(showticklabels=True)
-                    st.plotly_chart(fig_puntuacion, width="stretch")
+                    # ✔ REMOVE TEXT ON BARS — only show on hover
+                    fig_puntuacion.update_traces(
+                        hovertemplate="<b>%{y}</b><br>Puntuación promedio: %{x:.2f}<extra></extra>"
+                    )
+
+                    st.plotly_chart(fig_puntuacion, use_container_width=True)
 
                 else:
                     st.info("No se encontraron sitios en Google Maps para este departamento.")
@@ -420,10 +512,14 @@ if departamento:
         # NUBE DE PALABRAS + LÍNEA TEMPORAL
         # ===============================
         st.markdown("---")
-        st.markdown(f"###  Análisis de Reseñas - {departamento}")
+        st.markdown(f"###  Explorador de Opiniones y Actividad Turística  - {departamento}")
 
+        # ============================================================
+        #               VALIDACIÓN Y PROCESO DE TIPS
+        # ============================================================
         if df_tips.empty:
             st.info("No hay tips en Foursquare.")
+            texto_tips = ""
         else:
             df_tips["comment"] = df_tips["tip"].apply(lambda t: t.get("comment", ""))
 
@@ -433,61 +529,115 @@ if departamento:
                 "que", "de", "del", "al", "y", "o", "a", "en", "es", "Con", "con"
             })
 
-            col_wc, col_time = st.columns([1, 1])
+            # ===== Crear columna MES numérica =====
+            meses_map = {
+                "Enero": 1, "Febrero": 2, "Marzo": 3, "Abril": 4,
+                "Mayo": 5, "Junio": 6, "Julio": 7, "Agosto": 8,
+                "Septiembre": 9, "Setiembre": 9, "Octubre": 10,
+                "Noviembre": 11, "Diciembre": 12
+            }
 
-            # ----------- NUBE ----------- 
-            with col_wc:
-                if len(texto_tips.split()) < 3:
-                    st.info("No hay suficientes palabras.")
-                else:
-                    fig_wc, ax_wc = plt.subplots(figsize=(10, 7), dpi=150)
-                    wc = WordCloud(
-                        width=2000, height=1600,
-                        background_color="white",
-                        stopwords=stopwords_es
-                    ).generate(texto_tips)
+            df_tips["mes"] = df_tips["tip"].apply(
+                lambda t: meses_map.get(t.get("date", "").split()[0], None)
+            )
 
-                    ax_wc.imshow(wc, interpolation="bilinear")
-                    ax_wc.axis("off")
-                    st.pyplot(fig_wc)
+            # ===== Agrupar =====
+            df_mes = df_tips.dropna(subset=["mes"]) \
+                            .groupby("mes") \
+                            .size() \
+                            .reset_index(name="total_tips")
 
-            # ----------- LÍNEA TEMPORAL ----------- 
-            with col_time:
-                meses_map = {
-                    "Enero": 1, "Febrero": 2, "Marzo": 3, "Abril": 4,
-                    "Mayo": 5, "Junio": 6, "Julio": 7, "Agosto": 8,
-                    "Septiembre": 9, "Setiembre": 9, "Octubre": 10,
-                    "Noviembre": 11, "Diciembre": 12
-                }
+        # ============================================================
+        #         ASEGURAR df_mes PARA EVITAR NameError SI NO EXISTE
+        # ============================================================
+        if "df_mes" not in locals() and "df_mes" not in globals():
+            df_mes = pd.DataFrame(columns=["mes", "total_tips"])
 
-                df_tips["mes"] = df_tips["tip"].apply(
-                    lambda t: meses_map.get(t.get("date", "").split()[0], None)
-                )
+        # ============================================================
+        #                    CREAR NOMBRE DEL MES
+        # ============================================================
+        if df_mes.empty:
+            st.warning("No hay actividad temporal.")
+            df_mes = pd.DataFrame({"mes": [], "total_tips": [], "mes_nombre": []})
+        else:
+            df_mes["mes_nombre"] = df_mes["mes"].astype(int).apply(
+                lambda m: calendar.month_name[m].capitalize() if 1 <= m <= 12 else "Desconocido"
+            )
 
-                df_mes = df_tips.dropna(subset=["mes"]) \
-                                .groupby("mes") \
-                                .size() \
-                                .reset_index(name="total_tips")
+        # ============================================================
+        #                     DISEÑO DE COLUMNAS
+        # ============================================================
+        col_wc, col_time = st.columns([1, 1])
+
+        # Tamaño estandarizado de ambas (grandes)
+        WC_WIDTH  = 7      # pulgadas (matplotlib)
+        WC_HEIGHT = 5
+        LINE_WIDTH = 750   # px (plotly)
+        LINE_HEIGHT = 450  # px
+
+        paleta_set2 = px.colors.qualitative.Set2
+        paleta_wc = paleta_set2  # Para WordCloud y línea temporal
+
+        # ============================================================
+        #                        NUBE DE PALABRAS
+        # ============================================================
+        with col_wc:
+           
+
+            if len(texto_tips.split()) < 3:
+                st.info("No hay suficientes palabras para generar una nube.")
+            else:
+                fig_wc, ax_wc = plt.subplots(figsize=(9, 6), dpi=100)
+                def color_func(word, font_size, position, orientation, random_state=None, **kwargs):
+                    return np.random.choice(paleta_wc)
+
+                wc = WordCloud(
+                    width=2500, height=1800,
+                    background_color="white",
+                    stopwords=stopwords_es
+                ).generate(texto_tips)
+
+                ax_wc.imshow(wc, interpolation="bilinear")
+                ax_wc.axis("off")
+
+                st.pyplot(fig_wc)
+
+        # ============================================================
+        #                        LÍNEA TEMPORAL
+        # ============================================================
+        with col_time:
+            
+            if df_mes.empty:
+                st.info("No hay datos para mostrar la actividad temporal.")
+            else:
+                # Valores
+                x_vals = list(range(1, len(df_mes)+1))  # 1,2,3,...
+                y_vals = df_mes["total_tips"].tolist()
+                hover_texts = df_mes["mes_nombre"].tolist()
 
                 fig_linea = px.line(
-                    df_mes, x="mes", y="total_tips", markers=True
+                    x=x_vals,
+                    y=y_vals,
+                    markers=True,
+                    height=450,
+                    width=750,
+                    labels={"x":"Número de mes", "y":"Cantidad de Tips"},
+                    hover_name=hover_texts
                 )
-
+                color_linea = paleta_wc[0]
+                # Mejorar hover para que muestre el mes
                 fig_linea.update_traces(
+                    hovertemplate="<b>%{hovertext}</b><br>Cantidad de Tips: %{y}<extra></extra>",
+                    hovertext=hover_texts,
+                    line=dict(width=3, color='rgba(0,123,255,1)'),
                     fill='tozeroy',
-                    fillcolor='rgba(0,123,255,0.2)',
-                    line=dict(width=3, color='rgba(0,123,255,1)')
+                    fillcolor='rgba(0,123,255,0.1)'
                 )
 
                 fig_linea.update_layout(
-                    xaxis=dict(
-                        tickmode="array",
-                        tickvals=list(range(1, 13)),
-                        ticktext=["Ene","Feb","Mar","Abr","May","Jun",
-                                "Jul","Ago","Sep","Oct","Nov","Dic"]
-                    ),
-                    yaxis_title="Cantidad de Tips",
-                    plot_bgcolor="white"
-                )
+                    xaxis=dict(tickmode='array', tickvals=x_vals, ticktext=x_vals),
+                    plot_bgcolor="white",
+                    margin=dict(l=50, r=50, t=30, b=50)
+                    )
 
-                st.plotly_chart(fig_linea, width="stretch")
+                st.plotly_chart(fig_linea, use_container_width=False, config={"responsive": False})
