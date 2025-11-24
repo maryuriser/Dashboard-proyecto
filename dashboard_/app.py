@@ -141,7 +141,7 @@ BASE_URL = "http://127.0.0.1:8000"
 # ===============================
 # FUNCIONES DE CONSULTA (TODAS AQUÍ)
 # ===============================
-
+@st.cache_data(ttl=600)
 def obtener_sitios(dep):
     try:
         resp = requests.get(f"{BASE_URL}/foursquare/sities_clean?departamento={dep}", timeout=10)
@@ -150,6 +150,7 @@ def obtener_sitios(dep):
     except:
         return pd.DataFrame()
 
+@st.cache_data(ttl=600)
 def obtener_reseñantes(dep):
     try:
         resp = requests.get(f"{BASE_URL}/foursquare/reseñantes?departamento={dep}", timeout=10)
@@ -157,7 +158,7 @@ def obtener_reseñantes(dep):
         return pd.DataFrame(resp.json().get("reseñantes", []))
     except:
         return pd.DataFrame()
-
+@st.cache_data(ttl=600)
 def obtener_tips(dep):
     try:
         resp = requests.get(f"{BASE_URL}/foursquare/tips_expand?departamento={dep}", timeout=10)
@@ -165,7 +166,7 @@ def obtener_tips(dep):
         return pd.DataFrame(resp.json().get("tips", []))
     except:
         return pd.DataFrame()
-
+@st.cache_data(ttl=600)
 def obtener_google_sities_puntuacion(dep):
     try:
         resp = requests.get(f"{BASE_URL}/google/sities?departamento={dep}", timeout=10)
@@ -415,7 +416,7 @@ if departamento:
                 fig_demand.update_traces(textposition="outside", textfont_size=12)
 
                 # -----------------------------
-                # 🔥 AQUÍ SE AGREGA LO IMPORTANTE
+                #  AQUÍ SE AGREGA LO IMPORTANTE
                 fig_demand.update_yaxes(type="log")
                 # -----------------------------
 
@@ -475,12 +476,7 @@ if departamento:
                             trace.visible = "legendonly"
 
                     fig_puntuacion.update_layout(
-                        title=dict(
-                            text=" Promedio de puntuación por municipio",
-                            x=0.03,
-                            y=0.98,
-                            font=dict(size=18, color="#2c3e50")
-                        ),
+                    
                         xaxis_title="Promedio de Puntuación",
                         yaxis_title=None,
                         legend_title="Categoría",
